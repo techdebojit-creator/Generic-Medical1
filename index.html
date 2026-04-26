@@ -21,7 +21,7 @@
 <body>
 
 <div class="shop-header text-center">
-    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.05</h2>
+    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.06</h2>
     <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
     <p class="small">ता. गंगापूर, जि. छत्रपती संभाजीनगर | 📱 9588628295</p>
 </div>
@@ -45,7 +45,48 @@
             <strong>ADMIN MODE ACTIVE</strong>
             <button class="btn btn-sm btn-danger" onclick="location.reload()">Logout</button>
         </div>
+          <div class="card p-3 shadow-sm">
+    <h6 class="fw-bold text-primary">📋 मंथली पेशंट मॅनेजमेंट</h6>
+    
+    <div class="mb-2">
+        <span class="badge bg-info" id="nextIdDisplay">पुढचा आयडी: GEN0001</span>
+    </div>
 
+    <input type="hidden" id="patientId"> <div class="row g-2">
+        <div class="col-6">
+            <input type="text" id="pName" class="form-control form-control-sm" placeholder="रुग्णाचे नाव">
+        </div>
+        <div class="col-6">
+            <input type="number" id="pMobile" class="form-control form-control-sm" placeholder="मोबाईल नंबर">
+        </div>
+        <div class="col-12">
+            <input type="text" id="pAddress" class="form-control form-control-sm" placeholder="पूर्ण पत्ता">
+        </div>
+        <div class="col-12">
+            <textarea id="pMeds" class="form-control form-control-sm" rows="2" placeholder="गोळ्यांची यादी (उदा. Dolo-10, Vridol-5)"></textarea>
+        </div>
+        <div class="col-8">
+            <input type="number" id="pPrice" class="form-control form-control-sm" placeholder="एकूण महिना बिल (₹)">
+        </div>
+        <div class="col-4">
+            <button id="pBtn" class="btn btn-success btn-sm w-100 fw-bold" onclick="savePatient()">Save</button>
+        </div>
+    </div>
+
+    <div class="table-responsive mt-3">
+        <table class="table table-sm table-hover small">
+            <thead class="table-light">
+                <tr>
+                    <th>ID/नाव</th>
+                    <th>गोळ्या/बिल</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="patientList">
+                </tbody>
+        </table>
+    </div>
+</div>
         <div class="card p-3 bg-white">
             <h6 class="fw-bold text-success">आजची विक्री: <span id="totalSaleDisplay">₹0</span></h6>
             <hr>
@@ -119,7 +160,98 @@
         db.ref("GenericMedical/Stock/" + id).update({ qty: currentQty - sellQty });
         db.ref("GenericMedical/Sales").push({ amount: sellQty * rate, timestamp: Date.now() });
     }
+    // --- JavaScript लॉजिक ---
 
+    let nextPatientId = "GEN0001";
+
+    // १. शेवटचा आयडी तपासून पुढचा नंबर तयार करणे
+    db.ref("GenericMedical/Patients").limitToLast(1).on("value", snap => {
+        if (snap.exists()) {
+            snap.forEach(child => {
+                let lastId = child.val().patientId;
+                if (lastId) {
+                    let lastNum = parseInt(lastId.replace("GEN", ""));
+                    nextPatientId = "GEN" + (lastNum + 1).toString().padStart(4, '0');
+                }
+            });
+        }
+        document.getElementById("nextIdDisplay").innerText = "पुढचा आयडी: " + nextPatientId;
+    });
+
+    // २. पेशंट सेव्ह किंवा अपडेट करणे
+    function savePatient() {
+        let id = document.getElementById("patientId").value;
+        let data = {
+            name: document.getElementById("pName").value,
+            mobile: document.getElementById("pMobile").value,
+            address: document.getElementById("pAddress").value,
+            meds: document.getElementById("pMeds").value,
+            price: document.getElementById("pPrice").value
+        };
+
+        if (!data.name) return alert("कृपया नाव टाका!");
+
+        if (id) {
+            // अस्तित्वात असलेला पेशंट अपडेट करा
+            db.ref("GenericMedical/Patients/" + id).update(data)
+            .then(() => alert("माहिती अपडेट झाली!"));
+        } else {
+            // नवीन पेशंट ॲड करा (आयडीसह)
+            data.patientId = nextPatientId;
+            db.ref("GenericMedical/Patients").push(data)
+            .then(() => alert("नवीन पेशंट सेव्ह झाला!"));
+        }
+
+        resetPatientForm();
+    }
+
+    // ३. यादीमध्ये पेशंट दाखवणे
+    db.ref("GenericMedical/Patients").on("value", snap => {
+        let rows = "";
+        snap.forEach(child => {
+            let p = child.val();
+            rows += `
+            <tr>
+                <td>
+                    <span class="text-primary fw-bold small">${p.patientId}</span><br>
+                    <b>${p.name}</b>
+                </td>
+                <td>
+                    <small class="text-muted">${p.meds}</small><br>
+                    <b>₹${p.price}</b>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info" onclick="editPatient('${child.key}')">Edit</button>
+                </td>
+            </tr>`;
+        });
+        document.getElementById("patientList").innerHTML = rows;
+    });
+
+    // ४. एडिट करण्यासाठी माहिती फॉर्ममध्ये भरणे
+    function editPatient(id) {
+        db.ref("GenericMedical/Patients/" + id).once("value", snap => {
+            let p = snap.val();
+            document.getElementById("patientId").value = id;
+            document.getElementById("pName").value = p.name;
+            document.getElementById("pMobile").value = p.mobile;
+            document.getElementById("pAddress").value = p.address;
+            document.getElementById("pMeds").value = p.meds;
+            document.getElementById("pPrice").value = p.price;
+            
+            document.getElementById("pBtn").innerText = "Update Now";
+            document.getElementById("pBtn").className = "btn btn-warning btn-sm w-100 fw-bold";
+        });
+    }
+
+    // ५. फॉर्म रिसेट करणे
+    function resetPatientForm() {
+        ["pName", "pMobile", "pAddress", "pMeds", "pPrice", "patientId"].forEach(id => {
+            document.getElementById(id).value = "";
+        });
+        document.getElementById("pBtn").innerText = "Save";
+        document.getElementById("pBtn").className = "btn btn-success btn-sm w-100 fw-bold";
+    }
     // ५. ग्राहक सर्च
     function searchMedicine() {
         let query = document.getElementById("custSearch").value.toLowerCase();
