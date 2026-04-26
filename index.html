@@ -21,7 +21,7 @@
 <body>
 
 <div class="shop-header text-center">
-    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.07</h2>
+    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.08</h2>
     <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
     <p class="small">ता. गंगापूर, जि. छत्रपती संभाजीनगर | 📱 9588628295</p>
 </div>
@@ -45,6 +45,12 @@
             <strong>ADMIN MODE ACTIVE</strong>
             <button class="btn btn-sm btn-danger" onclick="location.reload()">Logout</button>
         </div>
+        <div class="card p-2 mb-2 bg-light">
+    <div class="d-flex gap-2">
+        <input type="text" id="pSearchInput" class="form-control form-control-sm" placeholder="ID, नाव किंवा मोबाईलने पेशंट शोधा..." onkeyup="searchPatientRecord()">
+    </div>
+</div>
+
           <div class="card p-3 shadow-sm">
     <h6 class="fw-bold text-primary">📋 मंथली पेशंट मॅनेजमेंट</h6>
     
@@ -204,29 +210,106 @@
 
         resetPatientForm();
     }
+    function generateDetailedBill(id) {
+    db.ref("GenericMedical/Patients/" + id).once("value", snap => {
+        let p = snap.val();
+        let drName = prompt("Refer डॉ. चे नाव टाका (उदा. Dr. Patil):", "Self");
+        if (drName === null) return;
+
+        let billWindow = window.open('', '_blank');
+        billWindow.document.write(`
+            <html>
+            <head>
+                <title>Bill - ${p.name}</title>
+                <style>
+                    body { font-family: 'Arial', sans-serif; padding: 30px; }
+                    .invoice-card { border: 1px solid #000; padding: 20px; width: 500px; margin: auto; }
+                    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                    .meta { display: flex; justify-content: space-between; margin-top: 15px; font-size: 13px; }
+                    .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                    .table th, .table td { border: 1px solid #000; padding: 5px; text-align: left; }
+                    .total { text-align: right; font-weight: bold; margin-top: 10px; font-size: 16px; }
+                    .footer { font-size: 10px; margin-top: 20px; text-align: center; }
+                    @media print { .btn-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="invoice-card">
+                    <div class="header">
+                        <h2 style="margin:0;">💊 जेनेरिक औषधी</h2>
+                        <small>डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</small><br>
+                        <small>मो: 9588628295</small>
+                    </div>
+                    <div class="meta">
+                        <div>
+                            <b>ID:</b> ${p.patientId}<br>
+                            <b>रुग्ण:</b> ${p.name}<br>
+                            <b>पत्ता:</b> ${p.address}
+                        </div>
+                        <div style="text-align:right;">
+                            <b>दिनांक:</b> ${new Date().toLocaleDateString()}<br>
+                            <b>Dr:</b> ${drName}<br>
+                            <b>मो:</b> ${p.mobile}
+                        </div>
+                    </div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Sr.</th>
+                                <th>औषध / Description</th>
+                                <th>किंमत</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>${p.meds.replace(/\n/g, ", ")}</td>
+                                <td>₹${p.price}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="total">एकूण बिल: ₹${p.price}/-</div>
+                    <div class="footer">
+                        * डॉक्टरांच्या सल्ल्याशिवाय औषधे घेऊ नका. *
+                    </div>
+                    <button class="btn-print" onclick="window.print()" style="margin-top:10px; width:100%; cursor:pointer;">Print Bill</button>
+                </div>
+            </body>
+            </html>
+        `);
+    });
+}
 
     // ३. यादीमध्ये पेशंट दाखवणे
     db.ref("GenericMedical/Patients").on("value", snap => {
-        let rows = "";
-        snap.forEach(child => {
-            let p = child.val();
-            rows += `
-            <tr>
-                <td>
-                    <span class="text-primary fw-bold small">${p.patientId}</span><br>
-                    <b>${p.name}</b>
-                </td>
-                <td>
-                    <small class="text-muted">${p.meds}</small><br>
-                    <b>₹${p.price}</b>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-outline-info" onclick="editPatient('${child.key}')">Edit</button>
-                </td>
-            </tr>`;
-        });
-        document.getElementById("patientList").innerHTML = rows;
+    let rows = "";
+    snap.forEach(child => {
+        let p = child.val();
+        // सर्च फिल्टर (सुरुवातीला सर्व दिसतील)
+        rows += `
+        <tr class="patient-row" data-search="${p.patientId} ${p.name} ${p.mobile}">
+            <td><small class="text-primary fw-bold">${p.patientId}</small><br><b>${p.name}</b></td>
+            <td>₹${p.price}</td>
+            <td>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-info p-1" onclick="editPatient('${child.key}')">Edit</button>
+                    <button class="btn btn-sm btn-dark p-1" onclick="generateDetailedBill('${child.key}')">Bill</button>
+                </div>
+            </td>
+        </tr>`;
     });
+    document.getElementById("patientList").innerHTML = rows;
+});
+
+// पेशंट सर्च फंक्शन (ID, नाव किंवा मोबाईलने)
+function searchPatientRecord() {
+    let q = document.getElementById("pSearchInput").value.toLowerCase();
+    let rows = document.querySelectorAll(".patient-row");
+    rows.forEach(row => {
+        let text = row.getAttribute("data-search").toLowerCase();
+        row.style.display = text.includes(q) ? "" : "none";
+    });
+}
 
     // ४. एडिट करण्यासाठी माहिती फॉर्ममध्ये भरणे
     function editPatient(id) {
