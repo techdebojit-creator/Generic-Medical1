@@ -21,7 +21,7 @@
 <body>
 
 <div class="shop-header text-center">
-    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.04</h2>
+    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.05</h2>
     <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
     <p class="small">ता. गंगापूर, जि. छत्रपती संभाजीनगर | 📱 9588628295</p>
 </div>
@@ -136,32 +136,23 @@
         document.getElementById("searchResult").innerHTML = results || "<p class='p-2 text-danger'>उपलब्ध नाही.</p>";
     }
 
-    // ५. लाईव्ह स्टॉक डिस्प्ले (Updated with Add & Sell buttons)
+    // ५. लाईव्ह स्टॉक डिस्प्ले (Corrected Order)
 db.ref("GenericMedical/Stock").on("value", snap => {
     let rows = ""; 
-    allInventory = [];
     snap.forEach(child => {
         let d = child.val(); 
-        d.key = child.key;
-        allInventory.push(d);
-        
         let rowClass = getExpStatus(d.exp);
         
         rows += `
             <tr class="${rowClass}">
-                <td><b>${d.name}</b><br><small class="text-muted">Batch: ${d.batch}</small></td>
-                <td><b>${d.qty}</b></td>
                 <td>
+                    <b>${d.name}</b><br>
+                    <small class="text-muted">Batch: ${d.batch}</small>
+                </td>
+                <td>${d.exp}</td> <td class="fw-bold text-primary">${d.qty}</td> <td>
                     <div class="d-flex gap-1">
-                        <button class="btn btn-sm btn-danger fw-bold" 
-                            onclick="updateStock('${child.key}', ${d.qty}, ${d.rate}, '${d.name}', 'sell')">
-                            - Sell
-                        </button>
-                        
-                        <button class="btn btn-sm btn-success fw-bold" 
-                            onclick="updateStock('${child.key}', ${d.qty}, ${d.rate}, '${d.name}', 'add')">
-                            + Add
-                        </button>
+                        <button class="btn btn-sm btn-danger py-0" onclick="updateStock('${child.key}', ${d.qty}, ${d.rate}, '${d.name}', 'sell')">- Sell</button>
+                        <button class="btn btn-sm btn-success py-0" onclick="updateStock('${child.key}', ${d.qty}, ${d.rate}, '${d.name}', 'add')">+ Add</button>
                     </div>
                 </td>
             </tr>`;
