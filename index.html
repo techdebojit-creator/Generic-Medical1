@@ -21,7 +21,7 @@
 <body>
 
 <div class="shop-header text-center">
-    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.03</h2>
+    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.04</h2>
     <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
     <p class="small">ता. गंगापूर, जि. छत्रपती संभाजीनगर | 📱 9588628295</p>
 </div>
@@ -136,22 +136,67 @@
         document.getElementById("searchResult").innerHTML = results || "<p class='p-2 text-danger'>उपलब्ध नाही.</p>";
     }
 
-    // ६. डेटा सिंक
-    db.ref("GenericMedical/Stock").on("value", snap => {
-        let rows = ""; allInventory = [];
-        snap.forEach(child => {
-            let d = child.val(); d.key = child.key;
-            allInventory.push(d);
-            let rowClass = getExpStatus(d.exp);
-            rows += `<tr class="${rowClass}">
-                <td><b>${d.name}</b><br><small>${d.batch}</small></td>
-                <td>${d.exp}</td>
+    // ५. लाईव्ह स्टॉक डिस्प्ले (Updated with Add & Sell buttons)
+db.ref("GenericMedical/Stock").on("value", snap => {
+    let rows = ""; 
+    allInventory = [];
+    snap.forEach(child => {
+        let d = child.val(); 
+        d.key = child.key;
+        allInventory.push(d);
+        
+        let rowClass = getExpStatus(d.exp);
+        
+        rows += `
+            <tr class="${rowClass}">
+                <td><b>${d.name}</b><br><small class="text-muted">Batch: ${d.batch}</small></td>
                 <td><b>${d.qty}</b></td>
-                <td><button class="btn btn-sm btn-danger p-1" onclick="sellMedicine('${child.key}', ${d.qty}, ${d.rate}, '${d.name}')">Sell</button></td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-danger fw-bold" 
+                            onclick="updateStock('${child.key}', ${d.qty}, ${d.rate}, '${d.name}', 'sell')">
+                            - Sell
+                        </button>
+                        
+                        <button class="btn btn-sm btn-success fw-bold" 
+                            onclick="updateStock('${child.key}', ${d.qty}, ${d.rate}, '${d.name}', 'add')">
+                            + Add
+                        </button>
+                    </div>
+                </td>
             </tr>`;
-        });
-        document.getElementById("stockTable").innerHTML = rows;
     });
+    document.getElementById("stockTable").innerHTML = rows;
+});
+
+// ६. स्टॉक अपडेट फंक्शन (Combined Add/Sell)
+function updateStock(id, currentQty, rate, name, type) {
+    let msg = (type === 'sell') ? `${name} च्या किती गोळ्या विकल्या?` : `${name} मध्ये किती नग मिळवायचे आहेत?`;
+    let val = prompt(msg, "1");
+    
+    if (!val || isNaN(val)) return;
+    val = Number(val);
+
+    let newQty;
+    if (type === 'sell') {
+        if (val > currentQty) return alert("स्टॉक अपुरा आहे!");
+        newQty = currentQty - val;
+        // विक्रीचा हिशोब सेव्ह करणे
+        db.ref("GenericMedical/Sales").push({ 
+            name: name, 
+            qty: val, 
+            amount: val * rate, 
+            timestamp: Date.now() 
+        });
+    } else {
+        newQty = currentQty + val;
+    }
+
+    // डेटाबेसमध्ये नवीन स्टॉक अपडेट करणे
+    db.ref("GenericMedical/Stock/" + id).update({ qty: newQty })
+    .then(() => alert("स्टॉक अपडेट झाला!"));
+}
+
 
     function getExpStatus(expDate) {
         let diff = (new Date(expDate).getFullYear() - new Date().getFullYear()) * 12 + (new Date(expDate).getMonth() - new Date().getMonth());
