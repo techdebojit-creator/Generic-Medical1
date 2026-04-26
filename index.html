@@ -3,267 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>जेनेरिक औषधी - स्मार्ट इन्व्हेंटरी</title>
+    <title>जेनेरिक औषधी - लासूर स्टेशन</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
     <style>
-        body { background-color: #f4f7f6; font-family: sans-serif; }
-        .shop-header { background: #1e3a8a; color: white; padding: 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .exp-red { background-color: #ffdce0 !important; }
-        .exp-yellow { background-color: #fff9db !important; }
-        .card { border-radius: 15px; margin-top: 15px; border: none; }
-        .sale-badge { font-size: 1.1rem; background: #dcfce7; color: #166534; padding: 8px; border-radius: 10px; text-align: center; font-weight: bold; }
-        .nav-tabs .nav-link { font-weight: bold; color: #1e3a8a; }
-        .nav-tabs .nav-link.active { background-color: #1e3a8a; color: white; border-radius: 10px 10px 0 0; }
-        .whatsapp-btn { background-color: #25d366; color: white; font-weight: bold; }
+        body { background-color: #f0f4f8; font-family: sans-serif; }
+        .shop-header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; padding: 20px; border-radius: 0 0 25px 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .card { border-radius: 15px; border: none; margin-top: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .admin-section { display: none; } /* सुरुवातीला ॲडमिन लपवलेला असेल */
+        .exp-red { border-left: 5px solid #dc3545; background: #fff5f5; }
+        .exp-yellow { border-left: 5px solid #ffc107; background: #fffdf2; }
+        .whatsapp-btn { background-color: #25d366; color: white; font-weight: bold; border-radius: 10px; }
+        .login-btn { position: fixed; bottom: 10px; right: 10px; opacity: 0.3; font-size: 10px; }
     </style>
 </head>
 <body>
 
 <div class="shop-header text-center">
-    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.01</h2>
+    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.02</h2>
     <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
-    <p class="small">संपर्क: +91 95886 28295</p>
-    <div class="mt-2 sale-badge admin-only" id="totalSaleDisplay">आजची एकूण विक्री: ₹0</div>
+    <p class="small">ता. गंगापूर, जि. छत्रपती संभाजीनगर | 📱 9588628295</p>
 </div>
 
 <div class="container pb-5">
-    
-    <ul class="nav nav-tabs mt-4 justify-content-center" id="myTab" role="tablist">
-        <li class="nav-item"><button class="nav-link active" id="customer-tab" data-bs-toggle="tab" data-bs-target="#customer">🛍️ ग्राहक (Customer)</button></li>
-        <li class="nav-item"><button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin">⚙️ ॲडमिन (Admin)</button></li>
-    </ul>
 
-    <div class="tab-content">
-        
-        <div class="tab-pane fade show active" id="customer">
-            <div class="card shadow-sm p-3">
-                <h6 class="fw-bold mb-3 border-bottom pb-2">🔍 औषध शोधा</h6>
-                <input type="text" id="custSearch" class="form-control mb-3" placeholder="औषधाचे नाव टाका..." onkeyup="searchMedicine()">
-                
-                <div id="searchResult" class="list-group">
-                    </div>
-
-                <hr>
-                <h6 class="fw-bold mb-3">📸 प्रिस्क्रिप्शन पाठवा</h6>
-                <p class="text-muted small">तुमच्या डॉक्टरांच्या चिठ्ठीचा फोटो काढून आम्हाला व्हॉट्सॲपवर पाठवा.</p>
-                <button class="btn whatsapp-btn w-100" onclick="orderOnWhatsApp('प्रिस्क्रिप्शन फोटो')">WhatsApp वरून मागवा</button>
-            </div>
+    <div id="customerSection">
+        <div class="card p-3">
+            <h6 class="fw-bold mb-3 border-bottom pb-2 text-primary">🔍 औषध उपलब्ध आहे का?</h6>
+            <input type="text" id="custSearch" class="form-control mb-3" placeholder="औषधाचे नाव टाका (उदा. Dolo)..." onkeyup="searchMedicine()">
+            <div id="searchResult" class="list-group"></div>
+            
+            <hr>
+            <h6 class="fw-bold mb-2 small text-muted text-center">किंवा डॉक्टरांची चिठ्ठी पाठवा</h6>
+            <button class="btn whatsapp-btn w-100 py-2" onclick="orderWhatsApp('प्रिस्क्रिप्शन फोटो')">WhatsApp वरून मागवा</button>
         </div>
-
-        <div class="tab-pane fade" id="admin">
-            <div class="card shadow-sm p-3">
-                <h6 class="fw-bold mb-3 border-bottom pb-2">📦 स्टॉक अपडेट / स्कॅन</h6>
-                <div class="card shadow-sm p-3">
-    <h6 class="fw-bold mb-3">⚡ फास्ट एंट्री (Voice + Smart Fill)</h6>
-    <div class="row g-2">
-        <div class="col-12 position-relative">
-            <input type="text" id="mName" class="form-control" placeholder="औषधाचे नाव (उदा. Dolo)">
-            <button class="btn btn-sm position-absolute end-0 top-0 mt-1 me-2" onclick="startVoice()">🎤</button>
-        </div>
-        <div class="col-6"><input type="text" id="mBatch" class="form-control" placeholder="बॅच"></div>
-        <div class="col-6">
-            <select id="commonExp" class="form-select" onchange="document.getElementById('mExp').value = this.value">
-                <option value="">EXP निवडा</option>
-                <option value="2026-12">Dec 2026</option>
-                <option value="2027-06">Jun 2027</option>
-                <option value="2027-12">Dec 2027</option>
-                <option value="2028-06">Jun 2028</option>
-            </select>
-        </div>
-        <input type="month" id="mExp" class="d-none"> <div class="col-6"><input type="number" id="mRate" class="form-control" placeholder="दर"></div>
-        <div class="col-6"><input type="number" id="mQty" class="form-control" placeholder="नग"></div>
-        
-        <button class="btn btn-primary w-100 mt-2 fw-bold" onclick="saveToFirebase()">✅ सेव्ह करा</button>
     </div>
-</div>
-                </div>
-            </div>
 
-            <div class="card shadow-sm overflow-hidden mt-4">
-                <div class="bg-dark text-white p-2 text-center small fw-bold text-uppercase">लाईव्ह इन्व्हेंटरी</div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light small text-uppercase">
-                            <tr>
-                                <th>औषध</th>
-                                <th>Qty</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stockTable" class="small"></tbody>
-                    </table>
-                </div>
+    <div id="adminSection" class="admin-section">
+        <div class="alert alert-dark mt-3 d-flex justify-content-between align-items-center">
+            <strong>ADMIN MODE ACTIVE</strong>
+            <button class="btn btn-sm btn-danger" onclick="location.reload()">Logout</button>
+        </div>
+
+        <div class="card p-3 bg-white">
+            <h6 class="fw-bold text-success">आजची विक्री: <span id="totalSaleDisplay">₹0</span></h6>
+            <hr>
+            <h6 class="fw-bold mb-2 small text-uppercase text-muted">Bulk Inventory Paste</h6>
+            <textarea id="bulkData" class="form-control" rows="4" placeholder="Name, Batch, Exp, Rate, Qty"></textarea>
+            <button class="btn btn-dark w-100 mt-2" onclick="processBulk()">Live Inventory मध्ये टाका</button>
+        </div>
+
+        <div class="card mt-3 overflow-hidden">
+            <div class="bg-primary text-white p-2 small text-center fw-bold text-uppercase">लाईव्ह इन्व्हेंटरी</div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light small">
+                        <tr><th>औषध</th><th>Exp</th><th>Stock</th><th>Action</th></tr>
+                    </thead>
+                    <tbody id="stockTable" class="small"></tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<button class="btn btn-light login-btn" onclick="adminLogin()">Admin Login</button>
+
 <script>
-    // १. Firebase Config (तुमचा स्वतःचा कोड इथे टाका)
+    // १. Firebase Config (येथे तुझा स्वतःचा कोड टाक)
     const firebaseConfig = {
-        apiKey: "AIzaSyBjZYfXDA3HHLE_GrcYu--RSJkRpLUsmSs",
-        databaseURL: "https://jodi-4d904-default-rtdb.firebaseio.com",
-        projectId: "jodi-4d904",
-        appId: "1:833293111189:web:bb81f2c87dc0135f60709c"
+        apiKey: "YOUR_API_KEY",
+        databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        appId: "YOUR_APP_ID"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     let allInventory = [];
 
-    // २. स्टॉक सेव्ह करणे (Admin)
-    function saveToFirebase() {
-        let name = document.getElementById("mName").value;
-        let batch = document.getElementById("mBatch").value;
-        let exp = document.getElementById("mExp").value;
-        let qty = Number(document.getElementById("mQty").value);
-        let rate = Number(document.getElementById("mRate").value);
-
-        if(!name || !exp || !rate) return alert("सर्व माहिती भरा!");
-
-        db.ref("GenericMedical/Stock").push({
-            name: name, batch: batch, exp: exp, qty: qty, rate: rate
-        }).then(() => {
-            alert("स्टॉक अपडेट!");
-            document.querySelectorAll('#admin input').forEach(i => i.value = "");
-        });
+    // २. गुपित लॉगिन लॉजिक
+    function adminLogin() {
+        let pass = prompt("ॲडमिन पासवर्ड टाका:");
+        if (pass === "bagul57") { // तुझा पासवर्ड 'bagul57' आहे, तू बदलू शकतोस
+            document.getElementById('adminSection').style.display = "block";
+            document.getElementById('customerSection').style.display = "none";
+            alert("लॉगिन यशस्वी!");
+        } else {
+            alert("चुकीचा पासवर्ड!");
+        }
     }
 
-    // ३. ग्राहक सर्च फंक्शन (Customer)
+    // ३. Bulk डेटा प्रोसेसिंग
+    function processBulk() {
+        let data = document.getElementById("bulkData").value.trim();
+        if(!data) return alert("आधी डेटा पेस्ट करा!");
+        let lines = data.split("\n");
+        lines.forEach(line => {
+            let p = line.split(",");
+            if (p.length >= 5) {
+                db.ref("GenericMedical/Stock").push({
+                    name: p[0].trim(), batch: p[1].trim(), exp: p[2].trim(), rate: Number(p[3]), qty: Number(p[4])
+                });
+            }
+        });
+        alert("स्टॉक अपडेट झाला!");
+        document.getElementById("bulkData").value = "";
+    }
+
+    // ४. विक्री (Sell) करणे
+    function sellMedicine(id, currentQty, rate, name) {
+        let sellQty = prompt(`${name} च्या किती गोळ्या विकल्या?`, "1");
+        if (!sellQty || isNaN(sellQty) || sellQty > currentQty) return alert("चूक!");
+        db.ref("GenericMedical/Stock/" + id).update({ qty: currentQty - sellQty });
+        db.ref("GenericMedical/Sales").push({ amount: sellQty * rate, timestamp: Date.now() });
+    }
+
+    // ५. ग्राहक सर्च
     function searchMedicine() {
         let query = document.getElementById("custSearch").value.toLowerCase();
         let results = "";
-        
-        if (query.length < 2) {
-            document.getElementById("searchResult").innerHTML = "";
-            return;
-        }
-
+        if (query.length < 2) { document.getElementById("searchResult").innerHTML = ""; return; }
         allInventory.forEach(item => {
             if (item.name.toLowerCase().includes(query)) {
-                let status = item.qty > 0 ? `<span class="badge bg-success">उपलब्ध (In Stock)</span>` : `<span class="badge bg-danger">संपले (Out of Stock)</span>`;
-                results += `
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>${item.name}</strong><br>
-                        ${status} | ₹${item.rate} प्रति नग
-                    </div>
-                    ${item.qty > 0 ? `<button class="btn btn-sm btn-outline-success" onclick="orderOnWhatsApp('${item.name}')">मागवा</button>` : ''}
+                results += `<div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div><b>${item.name}</b><br><small class="text-success">${item.qty > 0 ? 'उपलब्ध' : 'संपले'}</small></div>
+                    <button class="btn btn-sm btn-outline-success" onclick="orderWhatsApp('${item.name}')">मागवा</button>
                 </div>`;
             }
         });
-        document.getElementById("searchResult").innerHTML = results || "<p class='p-2 text-danger'>हे औषध सध्या उपलब्ध नाही.</p>";
+        document.getElementById("searchResult").innerHTML = results || "<p class='p-2 text-danger'>उपलब्ध नाही.</p>";
     }
 
-    // ४. व्हॉट्सॲप ऑर्डर फंक्शन
-    function orderOnWhatsApp(medName) {
-        let phone = "919588628295";
-        let msg = `नमस्कार जेनेरिक औषधी, मला ${medName} ची गरज आहे. कृपया माहिती द्या.`;
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
-    // ५. विक्री आणि स्टॉक अपडेट लॉजिक
-    function sellMedicine(id, currentQty, rate, name) {
-        let sellQty = prompt(`${name} च्या किती गोळ्या विकल्या?`, "1");
-        if (!sellQty || isNaN(sellQty) || sellQty > currentQty) return alert("चुकीची संख्या!");
-        db.ref("GenericMedical/Stock/" + id).update({ qty: currentQty - sellQty });
-        db.ref("GenericMedical/Sales").push({ name: name, qty: sellQty, amount: sellQty * rate, timestamp: Date.now() });
-    }
-
-    // ६. डेटा सिंक आणि टेबल अपडेट
+    // ६. डेटा सिंक
     db.ref("GenericMedical/Stock").on("value", snap => {
-        let rows = "";
-        allInventory = [];
+        let rows = ""; allInventory = [];
         snap.forEach(child => {
-            let d = child.val();
-            d.key = child.key;
+            let d = child.val(); d.key = child.key;
             allInventory.push(d);
-            
-            // Admin Table
-            rows += `
-                <tr class="${getExpClass(d.exp)}">
-                    <td><b>${d.name}</b><br><small>EXP: ${d.exp}</small></td>
-                    <td>${d.qty}</td>
-                    <td><button class="btn btn-sm btn-danger py-0" onclick="sellMedicine('${child.key}', ${d.qty}, ${d.rate}, '${d.name}')">Sell</button></td>
-                </tr>`;
+            let rowClass = getExpStatus(d.exp);
+            rows += `<tr class="${rowClass}">
+                <td><b>${d.name}</b><br><small>${d.batch}</small></td>
+                <td>${d.exp}</td>
+                <td><b>${d.qty}</b></td>
+                <td><button class="btn btn-sm btn-danger p-1" onclick="sellMedicine('${child.key}', ${d.qty}, ${d.rate}, '${d.name}')">Sell</button></td>
+            </tr>`;
         });
         document.getElementById("stockTable").innerHTML = rows;
     });
 
-    // एक्सपायरी कलर कोडिंग
-    function getExpClass(expDate) {
+    function getExpStatus(expDate) {
         let diff = (new Date(expDate).getFullYear() - new Date().getFullYear()) * 12 + (new Date(expDate).getMonth() - new Date().getMonth());
         return diff <= 0 ? "exp-red" : (diff <= 6 ? "exp-yellow" : "");
     }
 
+    function orderWhatsApp(med) {
+        window.open(`https://wa.me/919588628295?text=नमस्कार, मला ${med} हवे आहे.`, '_blank');
+    }
+
     // विक्री हिशोब
     db.ref("GenericMedical/Sales").on("value", snap => {
-        let total = 0;
-        let today = new Date().toDateString();
-        snap.forEach(child => {
-            if(new Date(child.val().timestamp).toDateString() === today) total += child.val().amount;
-        });
-        document.getElementById("totalSaleDisplay").innerText = "आजची एकूण विक्री: ₹" + total;
+        let total = 0; let today = new Date().toDateString();
+        snap.forEach(child => { if(new Date(child.val().timestamp).toDateString() === today) total += child.val().amount; });
+        document.getElementById("totalSaleDisplay").innerText = "₹" + total;
     });
-
-    // बिल स्कॅन (OCR)
-    async function scanBill() {
-    const file = document.getElementById('billUpload').files[0];
-    if (!file) return alert("आधी बिलाचा स्पष्ट फोटो निवडा!");
-
-    document.getElementById('loader').classList.remove('d-none'); // लोडर दाखवा
-
-    try {
-        const { data: { lines } } = await Tesseract.recognize(file, 'eng');
-        document.getElementById('loader').classList.add('d-none');
-
-        console.log("Found Lines:", lines);
-
-        // बिलातील प्रत्येक ओळ तपासणे
-        lines.forEach(line => {
-            const text = line.text.toUpperCase();
-            
-            // १. एक्सपायरी शोधणे (उदा. 07/28 किंवा 05/27)
-            const expMatch = text.match(/\d{2}\/\d{2}/);
-            
-            // २. जर ओळीत TAB किंवा CAP असे शब्द असतील तर ते औषधाचे नाव असू शकते
-            if (text.includes("TAB") || text.includes("CAP") || text.includes("500")) {
-                
-                // औषधाचे नाव काढणे (पहिली काही अक्षरे)
-                let nameParts = text.split(" ");
-                let detectedName = nameParts.slice(0, 3).join(" "); // पहिले ३ शब्द
-
-                // फॉर्ममध्ये डेटा भरणे (फक्त पहिल्या सापडलेल्या औषधासाठी किंवा अलर्ट दाखवण्यासाठी)
-                if(confirm(`काय सिस्टिमने बरोबर ओळखले?\nऔषध: ${detectedName}\nEXP: ${expMatch ? expMatch[0] : 'सापडली नाही'}`)) {
-                    document.getElementById('mName').value = detectedName;
-                    if(expMatch) {
-                        // तारीख फॉर्मॅट सेट करणे (उदा. 2028-07)
-                        document.getElementById('mExp').value = "20" + expMatch[0].split('/')[1] + "-" + expMatch[0].split('/')[0];
-                    }
-                }
-            }
-        });
-
-    } catch (error) {
-        alert("स्कॅनिंग एरर: " + error.message);
-        document.getElementById('loader').classList.add('d-none');
-    }
-}
-// Voice Typing Logic
-function startVoice() {
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.start();
-    
-    recognition.onresult = (event) => {
-        const speechToText = event.results[0][0].transcript;
-        document.getElementById('mName').value = speechToText;
-    };
-}
 </script>
 </body>
 </html>
