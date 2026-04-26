@@ -200,13 +200,48 @@
 
     // बिल स्कॅन (OCR)
     async function scanBill() {
-        const file = document.getElementById('billUpload').files[0];
-        alert("स्कॅनिंग सुरू आहे...");
-        const { data: { text } } = await Tesseract.recognize(file, 'eng');
-        const expMatch = text.match(/\d{2}\/\d{2,4}/);
-        if(expMatch) document.getElementById('mExp').value = "20" + expMatch[0].split('/')[1] + "-" + expMatch[0].split('/')[0];
-        alert("स्कॅन पूर्ण!");
+    const file = document.getElementById('billUpload').files[0];
+    if (!file) return alert("आधी बिलाचा स्पष्ट फोटो निवडा!");
+
+    document.getElementById('loader').classList.remove('d-none'); // लोडर दाखवा
+
+    try {
+        const { data: { lines } } = await Tesseract.recognize(file, 'eng');
+        document.getElementById('loader').classList.add('d-none');
+
+        console.log("Found Lines:", lines);
+
+        // बिलातील प्रत्येक ओळ तपासणे
+        lines.forEach(line => {
+            const text = line.text.toUpperCase();
+            
+            // १. एक्सपायरी शोधणे (उदा. 07/28 किंवा 05/27)
+            const expMatch = text.match(/\d{2}\/\d{2}/);
+            
+            // २. जर ओळीत TAB किंवा CAP असे शब्द असतील तर ते औषधाचे नाव असू शकते
+            if (text.includes("TAB") || text.includes("CAP") || text.includes("500")) {
+                
+                // औषधाचे नाव काढणे (पहिली काही अक्षरे)
+                let nameParts = text.split(" ");
+                let detectedName = nameParts.slice(0, 3).join(" "); // पहिले ३ शब्द
+
+                // फॉर्ममध्ये डेटा भरणे (फक्त पहिल्या सापडलेल्या औषधासाठी किंवा अलर्ट दाखवण्यासाठी)
+                if(confirm(`काय सिस्टिमने बरोबर ओळखले?\nऔषध: ${detectedName}\nEXP: ${expMatch ? expMatch[0] : 'सापडली नाही'}`)) {
+                    document.getElementById('mName').value = detectedName;
+                    if(expMatch) {
+                        // तारीख फॉर्मॅट सेट करणे (उदा. 2028-07)
+                        document.getElementById('mExp').value = "20" + expMatch[0].split('/')[1] + "-" + expMatch[0].split('/')[0];
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        alert("स्कॅनिंग एरर: " + error.message);
+        document.getElementById('loader').classList.add('d-none');
     }
+}
+
 </script>
 </body>
 </html>
