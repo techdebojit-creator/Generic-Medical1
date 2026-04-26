@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>जेनेरिक औषधी - स्मार्ट इन्व्हेंटरी</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <style>
+        body { background-color: #f4f7f6; font-family: sans-serif; }
+        .shop-header { background: #1e3a8a; color: white; padding: 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+        .exp-red { background-color: #ffdce0 !important; }
+        .exp-yellow { background-color: #fff9db !important; }
+        .card { border-radius: 15px; margin-top: 15px; }
+        .sale-badge { font-size: 1.2rem; background: #dcfce7; color: #166534; padding: 10px; border-radius: 10px; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="shop-header text-center">
+    <h2 class="fw-bold">💊 जेनेरिक औषधी</h2>
+    <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
+    <div class="mt-2 sale-badge" id="totalSaleDisplay">आजची एकूण विक्री: ₹0</div>
+</div>
+
+<div class="container pb-5">
+    
+    <div class="card shadow-sm p-3">
+        <h6 class="fw-bold mb-3 border-bottom pb-2">📦 स्टॉक अपडेट / स्कॅन</h6>
+        <div class="row g-2">
+            <div class="col-12"><input type="text" id="mName" class="form-control" placeholder="औषधाचे नाव"></div>
+            <div class="col-6"><input type="text" id="mBatch" class="form-control" placeholder="बॅच"></div>
+            <div class="col-6"><input type="month" id="mExp" class="form-control"></div>
+            <div class="col-6"><input type="number" id="mRate" class="form-control" placeholder="दर (₹ प्रति गोळी)"></div>
+            <div class="col-6"><input type="number" id="mQty" class="form-control" placeholder="एकूण स्टॉक (नग)"></div>
+            <div class="col-12 mt-2">
+                <button class="btn btn-primary w-100 fw-bold" onclick="saveToFirebase()">स्टॉकमध्ये सेव्ह करा</button>
+                <input type="file" id="billUpload" class="d-none" onchange="scanBill()">
+                <button class="btn btn-outline-success w-100 mt-2" onclick="document.getElementById('billUpload').click()">📸 बिल स्कॅन करा</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm overflow-hidden">
+        <div class="bg-dark text-white p-2 text-center small fw-bold text-uppercase">लाईव्ह इन्व्हेंटरी</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th>औषध</th>
+                        <th>EXP/Rate</th>
+                        <th>Qty</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="stockTable" class="small">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // १. Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyBjZYfXDA3HHLE_GrcYu--RSJkRpLUsmSs",
+        databaseURL: "https://jodi-4d904-default-rtdb.firebaseio.com",
+        projectId: "jodi-4d904",
+        appId: "1:833293111189:web:bb81f2c87dc0135f60709c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // २. स्टॉक सेव्ह करणे
+    function saveToFirebase() {
+        let name = document.getElementById("mName").value;
+        let batch = document.getElementById("mBatch").value;
+        let exp = document.getElementById("mExp").value;
+        let qty = Number(document.getElementById("mQty").value);
+        let rate = Number(document.getElementById("mRate").value);
+
+        if(!name || !exp || !rate) return alert("सर्व माहिती भरा!");
+
+        db.ref("GenericMedical/Stock").push({
+            name: name, batch: batch, exp: exp, qty: qty, rate: rate
+        }).then(() => {
+            alert("स्टॉक अपडेट!");
+            document.querySelectorAll('input').forEach(i => i.value = "");
+        });
+    }
+
+    // ३. विक्री करणे (Sell Function)
+    function sellMedicine(id, currentQty, rate, name) {
+        let sellQty = prompt(`${name} च्या किती गोळ्या विकल्या?`, "1");
+        if (!sellQty || isNaN(sellQty) || sellQty > currentQty) return alert("चुकीची संख्या!");
+
+        let totalBill = sellQty * rate;
+        let newQty = currentQty - sellQty;
+
+        // स्टॉक अपडेट
+        db.ref("GenericMedical/Stock/" + id).update({ qty: newQty });
+
+        // विक्री रेकॉर्ड
+        db.ref("GenericMedical/Sales").push({
+            name: name, qty: sellQty, amount: totalBill, timestamp: Date.now()
+        }).then(() => alert(`विक्री पूर्ण! बिल: ₹${totalBill}`));
+    }
+
+    // ४. एक्सपायरीनुसार रंग
+    function getExpClass(expDate) {
+        let today = new Date();
+        let exp = new Date(expDate);
+        let diff = (exp.getFullYear() - today.getFullYear()) * 12 + (exp.getMonth() - today.getMonth());
+        if (diff <= 0) return "exp-red";
+        if (diff <= 6) return "exp-yellow";
+        return "";
+    }
+
+    // ५. लाईव्ह स्टॉक डिस्प्ले
+    db.ref("GenericMedical/Stock").on("value", snap => {
+        let rows = "";
+        snap.forEach(child => {
+            let d = child.val();
+            let rowClass = getExpClass(d.exp);
+            rows += `
+                <tr class="${rowClass}">
+                    <td><b>${d.name}</b><br><small class="text-muted">Batch: ${d.batch}</small></td>
+                    <td>${d.exp}<br>₹${d.rate}/tab</td>
+                    <td class="fw-bold text-primary">${d.qty}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger py-0" onclick="sellMedicine('${child.key}', ${d.qty}, ${d.rate}, '${d.name}')">Sell</button>
+                    </td>
+                </tr>`;
+        });
+        document.getElementById("stockTable").innerHTML = rows;
+    });
+
+    // ६. आजची विक्री कॅल्क्युलेट करणे
+    db.ref("GenericMedical/Sales").on("value", snap => {
+        let total = 0;
+        let today = new Date().toDateString();
+        snap.forEach(child => {
+            let s = child.val();
+            if(new Date(s.timestamp).toDateString() === today) {
+                total += s.amount;
+            }
+        });
+        document.getElementById("totalSaleDisplay").innerText = "आजची एकूण विक्री: ₹" + total;
+    });
+
+    // ७. OCR (Bill Scanning)
+    async function scanBill() {
+        const file = document.getElementById('billUpload').files[0];
+        alert("बिल स्कॅन होत आहे, कृपया थांबा...");
+        const { data: { text } } = await Tesseract.recognize(file, 'eng');
+        const expMatch = text.match(/\d{2}\/\d{2,4}/);
+        if(expMatch) {
+            document.getElementById('mExp').value = "20" + expMatch[0].split('/')[1] + "-" + expMatch[0].split('/')[0];
+            alert("EXP डेट ओळखली: " + expMatch[0]);
+        } else {
+            alert("स्कॅन पूर्ण झाले, माहिती मॅन्युअली चेक करा.");
+        }
+    }
+</script>
+
+</body>
+</html>
