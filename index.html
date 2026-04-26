@@ -23,7 +23,7 @@
 <body>
 
 <div class="shop-header text-center">
-    <h2 class="fw-bold">💊 जेनेरिक औषधी</h2>
+    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.01</h2>
     <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
     <p class="small">संपर्क: +91 95886 28295</p>
     <div class="mt-2 sale-badge admin-only" id="totalSaleDisplay">आजची एकूण विक्री: ₹0</div>
@@ -56,17 +56,29 @@
         <div class="tab-pane fade" id="admin">
             <div class="card shadow-sm p-3">
                 <h6 class="fw-bold mb-3 border-bottom pb-2">📦 स्टॉक अपडेट / स्कॅन</h6>
-                <div class="row g-2">
-                    <div class="col-12"><input type="text" id="mName" class="form-control" placeholder="औषधाचे नाव"></div>
-                    <div class="col-6"><input type="text" id="mBatch" class="form-control" placeholder="बॅच"></div>
-                    <div class="col-6"><input type="month" id="mExp" class="form-control"></div>
-                    <div class="col-6"><input type="number" id="mRate" class="form-control" placeholder="दर (₹ प्रति गोळी)"></div>
-                    <div class="col-6"><input type="number" id="mQty" class="form-control" placeholder="एकूण स्टॉक (नग)"></div>
-                    <div class="col-12 mt-2">
-                        <button class="btn btn-primary w-100 fw-bold" onclick="saveToFirebase()">स्टॉकमध्ये सेव्ह करा</button>
-                        <input type="file" id="billUpload" class="d-none" onchange="scanBill()">
-                        <button class="btn btn-outline-success w-100 mt-2" onclick="document.getElementById('billUpload').click()">📸 बिल स्कॅन करा</button>
-                    </div>
+                <div class="card shadow-sm p-3">
+    <h6 class="fw-bold mb-3">⚡ फास्ट एंट्री (Voice + Smart Fill)</h6>
+    <div class="row g-2">
+        <div class="col-12 position-relative">
+            <input type="text" id="mName" class="form-control" placeholder="औषधाचे नाव (उदा. Dolo)">
+            <button class="btn btn-sm position-absolute end-0 top-0 mt-1 me-2" onclick="startVoice()">🎤</button>
+        </div>
+        <div class="col-6"><input type="text" id="mBatch" class="form-control" placeholder="बॅच"></div>
+        <div class="col-6">
+            <select id="commonExp" class="form-select" onchange="document.getElementById('mExp').value = this.value">
+                <option value="">EXP निवडा</option>
+                <option value="2026-12">Dec 2026</option>
+                <option value="2027-06">Jun 2027</option>
+                <option value="2027-12">Dec 2027</option>
+                <option value="2028-06">Jun 2028</option>
+            </select>
+        </div>
+        <input type="month" id="mExp" class="d-none"> <div class="col-6"><input type="number" id="mRate" class="form-control" placeholder="दर"></div>
+        <div class="col-6"><input type="number" id="mQty" class="form-control" placeholder="नग"></div>
+        
+        <button class="btn btn-primary w-100 mt-2 fw-bold" onclick="saveToFirebase()">✅ सेव्ह करा</button>
+    </div>
+</div>
                 </div>
             </div>
 
@@ -241,7 +253,17 @@
         document.getElementById('loader').classList.add('d-none');
     }
 }
-
+// Voice Typing Logic
+function startVoice() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.start();
+    
+    recognition.onresult = (event) => {
+        const speechToText = event.results[0][0].transcript;
+        document.getElementById('mName').value = speechToText;
+    };
+}
 </script>
 </body>
 </html>
