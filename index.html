@@ -21,7 +21,7 @@
 <body>
 
 <div class="shop-header text-center">
-    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.06</h2>
+    <h2 class="fw-bold">💊 जेनेरिक औषधी v 1.07</h2>
     <p class="small mb-0">डॉ. बाबासाहेब आंबेडकर स्मारक जवळ, लासूर स्टेशन</p>
     <p class="small">ता. गंगापूर, जि. छत्रपती संभाजीनगर | 📱 9588628295</p>
 </div>
@@ -253,20 +253,46 @@
         document.getElementById("pBtn").className = "btn btn-success btn-sm w-100 fw-bold";
     }
     // ५. ग्राहक सर्च
-    function searchMedicine() {
-        let query = document.getElementById("custSearch").value.toLowerCase();
-        let results = "";
-        if (query.length < 2) { document.getElementById("searchResult").innerHTML = ""; return; }
-        allInventory.forEach(item => {
-            if (item.name.toLowerCase().includes(query)) {
-                results += `<div class="list-group-item d-flex justify-content-between align-items-center">
-                    <div><b>${item.name}</b><br><small class="text-success">${item.qty > 0 ? 'उपलब्ध' : 'संपले'}</small></div>
-                    <button class="btn btn-sm btn-outline-success" onclick="orderWhatsApp('${item.name}')">मागवा</button>
-                </div>`;
-            }
-        });
-        document.getElementById("searchResult").innerHTML = results || "<p class='p-2 text-danger'>उपलब्ध नाही.</p>";
+    // १. हा भाग डेटाबेस मधून औषधांची लिस्ट (allInventory) तयार करतो
+// हा कोड स्क्रिप्टमध्ये मोकळा (कुठल्याही फंक्शनच्या बाहेर) असावा
+db.ref("GenericMedical/Stock").on("value", snap => {
+    allInventory = []; // जुनी लिस्ट क्लिअर करा
+    snap.forEach(child => {
+        let d = child.val();
+        d.key = child.key;
+        allInventory.push(d); // इथे औषधं 'allInventory' मध्ये जमा होतात
+    });
+});
+
+// २. सुधारित सर्च फंक्शन
+function searchMedicine() {
+    let query = document.getElementById("custSearch").value.toLowerCase().trim();
+    let results = "";
+
+    // जर बॉक्स रिकामा असेल तर रिझल्ट पुसून टाका
+    if (query.length < 1) { 
+        document.getElementById("searchResult").innerHTML = ""; 
+        return; 
     }
+
+    allInventory.forEach(item => {
+        if (item.name.toLowerCase().includes(query)) {
+            let statusColor = item.qty > 0 ? 'text-success' : 'text-danger';
+            let statusText = item.qty > 0 ? 'उपलब्ध' : 'संपले';
+            
+            results += `<div class="list-group-item d-flex justify-content-between align-items-center shadow-sm mb-1">
+                <div>
+                    <b class="text-dark">${item.name}</b><br>
+                    <small class="${statusColor} fw-bold">${statusText}</small>
+                </div>
+                <button class="btn btn-sm btn-outline-success px-3" onclick="orderWhatsApp('${item.name}')">मागवा</button>
+            </div>`;
+        }
+    });
+
+    // जर काहीच सापडले नाही तर मेसेज दाखवा
+    document.getElementById("searchResult").innerHTML = results || "<p class='p-2 text-danger'>माफ करा, औषध सापडले नाही.</p>";
+}
 
     // ५. लाईव्ह स्टॉक डिस्प्ले (Corrected Order)
 db.ref("GenericMedical/Stock").on("value", snap => {
